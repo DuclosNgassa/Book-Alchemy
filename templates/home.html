@@ -10,7 +10,20 @@
   <body>
 
     <h1>Welcome to the Book Library</h1>
+    <!-- Sorting Dropdown Form -->
+    <div class="sort-container" style="margin-bottom: 20px;">
+      <form method="GET" action="{{ url_for('home') }}">
+        <label for="sort">Sort books by:</label>
+        <select name="sort" id="sort">
+          <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
+          <option value="publication_year" {% if current_sort == 'publication_year' %}selected{% endif %}>Publication year</option>
+          <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Author Name</option>
+        </select>
+      <button type="submit">Sort</button>
+      </form>
+    </div>
 
+    <!-- Book listing -->
     {% for book in books %}
       <div class="book-card">
         <!-- Book Cover Image using Open Library API -->

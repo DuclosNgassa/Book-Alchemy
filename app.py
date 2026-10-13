@@ -17,8 +17,18 @@ db.init_app(app)
 
 
 @app.route('/')
-def index():
-    books = db.session.scalar(db.select(Book)).all()
+def home():
+    sort_by = request.args.get('sort','title')
+    statement = db.select(Book)
+    if sort_by == 'author':
+        statement = statement.join(Author).order_by(Author.name)
+    elif sort_by == 'publication_year':
+        statement = statement.order_by(Book.publication_year)
+    else:
+        statement = statement.order_by(Book.title)
+
+    books = db.session.scalars(statement).all()
+
     return render_template("home.html", books=books)
 
 @app.route('/add_author', methods=['GET', 'POST'])
