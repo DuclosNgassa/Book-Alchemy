@@ -1,43 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Home - Book Library</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  </head>
-  <body>
+</head>
+<body>
 
-    <h1>Welcome to the Book Library</h1>
-    <!-- Sorting Dropdown Form -->
-    <div class="sort-container" style="margin-bottom: 20px;">
-      <form method="GET" action="{{ url_for('home') }}">
-        <label for="sort">Sort books by:</label>
-        <select name="sort" id="sort">
-          <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
-          <option value="publication_year" {% if current_sort == 'publication_year' %}selected{% endif %}>Publication year</option>
-          <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Author Name</option>
+<h1>Welcome to the Book Library</h1>
+
+<!-- Display Flashed Success/Error Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages" style="margin-bottom: 20px;">
+            {% for category, message in messages %}
+                <p style="color: {% if category == 'danger' %}red{% else %}green{% endif %}; font-weight: bold;">
+                    {{ message }}
+                </p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Controls Container (Search & Sort) -->
+<div class="controls-container" style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">
+
+    <!-- Search Form -->
+    <form method="GET" action="{{ url_for('home') }}">
+        <input type="text" id="search" name="search" placeholder="Search by title..." value="{{ search_query or '' }}">
+        <button type="submit">Search</button>
+        {% if search_query %}
+            <a href="{{ url_for('home') }}" style="margin-left: 5px;">Clear</a>
+        {% endif %}
+
+        <!-- Preserve current sort order when searching -->
+        <input type="hidden" name="sort" value="{{ current_sort }}">
+    </form>
+
+    <!-- Sorting Form -->
+    <form method="GET" action="{{ url_for('home') }}" style="margin-left: auto;">
+        <label for="sort">Sort by:</label>
+        <select name="sort" id="sort" onchange="this.form.submit()">
+            <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
+            <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Author Name</option>
         </select>
-      <button type="submit">Sort</button>
-      </form>
-    </div>
+        <button type="submit">Sort</button>
 
-    <!-- Book listing -->
-    {% for book in books %}
-      <div class="book-card">
-        <!-- Book Cover Image using Open Library API -->
+        <!-- Preserve current search query when sorting -->
+        {% if search_query %}
+            <input type="hidden" name="search" value="{{ search_query }}">
+        {% endif %}
+    </form>
+
+</div>
+
+<!-- No Results Message -->
+{% if no_results_message %}
+    <p style="color: #d9534f; font-weight: bold; margin-top: 20px;">{{ no_results_message }}</p>
+{% endif %}
+
+<!-- Book Listing -->
+{% for book in books %}
+    <div class="book-card">
         <img class="book-cover"
              src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-M.jpg"
              alt="{{ book.title }} cover">
 
         <div>
-          <h3>{{ book.title }}</h3>
-          <p>By: <strong>{{ book.author.name }}</strong></p>
-          <p>Published: {{ book.publication_year.strftime('%Y') }}</p>
+            <h3>{{ book.title }}</h3>
+            <p>By: <strong>{{ book.author.name }}</strong></p>
+            <p>Published: {{ book.publication_year.strftime('%Y') }}</p>
+            <!-- Delete Book Form & Button -->
+          <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this book?');">
+            <button type="submit" style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">Delete Book</button>
+          </form>
         </div>
-      </div>
-    {% endfor %}
+    </div>
+{% endfor %}
 
-  </body>
+</body>
 </html>

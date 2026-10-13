@@ -1,25 +1,37 @@
 from datetime import datetime
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 from data_models import db, Author, Book
 
 app = Flask(__name__)
 
+app.secret_key = 'my_flash_secret_key_for_book_alchemy'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data/library.sqlite')
 
 # connect the Flask app to the flask-sqlalchemy code.
 db.init_app(app)
-#with app.app_context():
+
+
+# with app.app_context():
 #    db.create_all()
 
 
 @app.route('/')
 def home():
-    sort_by = request.args.get('sort','title')
+    sort_by = request.args.get('sort', 'title')
+    search_query = request.args.get('search', '').strip()
+
     statement = db.select(Book)
+
+    # Apply search
+    if search_query:
+        search_term = f"%{search_query}%"
+        statement = statement.where(Book.title.ilike(search_term))
+
+    # Apply sorting
     if sort_by == 'author':
         statement = statement.join(Author).order_by(Author.name)
     elif sort_by == 'publication_year':
@@ -29,7 +41,18 @@ def home():
 
     books = db.session.scalars(statement).all()
 
-    return render_template("home.html", books=books)
+    no_results_message = None
+    if search_query and not books:
+        no_results_message = f"No books matched your search for '{search_query}'."
+
+    return render_template(
+        "home.html",
+        books=books,
+        current_sort=sort_by,
+        search_query=search_query,
+        no_results_message=no_results_message
+    )
+
 
 @app.route('/add_author', methods=['GET', 'POST'])
 def add_author():
@@ -37,7 +60,7 @@ def add_author():
     if request.method == 'POST':
         name = request.form['name']
         birthdate_str = request.form['birthdate']
-        date_of_death_str=request.form['date_of_death']
+        date_of_death_str = request.form['date_of_death']
         birthdate = datetime.strptime(birthdate_str, '%Y-%m-%d')
         date_of_death = None
         if date_of_death_str:
@@ -62,8 +85,8 @@ def add_book():
     if request.method == 'POST':
         title = request.form['title']
         isbn = request.form['isbn']
-        publication_year= datetime.strptime(request.form['publication_year'], '%Y-%m-%d')
-        author_id=int(request.form['author_id'])
+        publication_year = datetime.strptime(request.form['publication_year'], '%Y-%m-%d')
+        author_id = int(request.form['author_id'])
 
         book = Book(
             title=title,
@@ -80,6 +103,38 @@ def add_book():
     return render_template('add_book.html', authors=authors, success_message=success_message)
 
 
+@app.route('/book/<int:book_id>/delete', methods=['POST'])
+def delete_book(book_id:int):
+    book = db.session.get(Book, book_id)
+
+    if book:
+        author = book.author
+        title = book.title
+
+        db.session.delete(book)
+        db.session.commit()
+
+        # Check if the author has any remaining books in the library
+        remaining_books_count = db.session.scalar(
+            db.select(db.func.count(Book.id)).where(Book.author_id == author.id)
+        )
+
+        # If the author has no other books, delete the author as well
+        if remaining_books_count == 0:
+            author_name = author.name
+            db.session.delete(author)
+            db.session.commit()
+            flash(
+                f"Book '{title}' and author '{author_name}' were successfully deleted because they had no remaining books.",
+                "success")
+        else:
+            flash(f"Book '{title}' was successfully deleted!", "success")
+
+    else:
+        flash("Book not found.", "danger")
+
+    return redirect(url_for('home'))
+
+
 if __name__ == '__main__':
     app.run()
-
