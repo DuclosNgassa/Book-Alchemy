@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Home - Book Library</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+
+    <h1>Welcome to the Book Library</h1>
+
+    {% for book in books %}
+      <div class="book-card">
+        <!-- Book Cover Image using Open Library API -->
+        <img class="book-cover"
+             src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-M.jpg"
+             alt="{{ book.title }} cover">
+
+        <div>
+          <h3>{{ book.title }}</h3>
+          <p>By: <strong>{{ book.author.name }}</strong></p>
+          <p>Published: {{ book.publication_year.strftime('%Y') }}</p>
+        </div>
+      </div>
+    {% endfor %}
+
+  </body>
+</html>
