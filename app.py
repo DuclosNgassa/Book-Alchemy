@@ -57,23 +57,26 @@ def home():
 @app.route('/add_author', methods=['GET', 'POST'])
 def add_author():
     success_message = None
+
     if request.method == 'POST':
-        name = request.form['name']
-        birthdate_str = request.form['birthdate']
-        date_of_death_str = request.form['date_of_death']
-        birthdate = datetime.strptime(birthdate_str, '%Y-%m-%d')
+        name = request.form.get('name')
+        birth_date_str = request.form.get('birth_date')
+        date_of_death_str = request.form.get('date_of_death')
+
+        birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
+
         date_of_death = None
-        if date_of_death_str:
-            date_of_death = datetime.strptime(date_of_death_str, '%Y-%m-%d')
+        if date_of_death_str and date_of_death_str.strip():
+            date_of_death = datetime.strptime(date_of_death_str, '%Y-%m-%d').date()
 
         author = Author(
             name=name,
-            birth_date=birthdate,
+            birth_date=birth_date,
             date_of_death=date_of_death
         )
-
         db.session.add(author)
         db.session.commit()
+
         success_message = f"Author '{name}' was successfully added!"
 
     return render_template('add_author.html', success_message=success_message)
@@ -87,12 +90,15 @@ def add_book():
         isbn = request.form['isbn']
         publication_year = datetime.strptime(request.form['publication_year'], '%Y-%m-%d')
         author_id = int(request.form['author_id'])
+        rating_str = request.form.get('rating')
+        rating = int(rating_str) if rating_str else None
 
         book = Book(
             title=title,
             isbn=isbn,
             publication_year=publication_year,
-            author_id=author_id
+            author_id=author_id,
+            rating=rating,
         )
 
         db.session.add(book)
@@ -104,7 +110,7 @@ def add_book():
 
 
 @app.route('/book/<int:book_id>/delete', methods=['POST'])
-def delete_book(book_id:int):
+def delete_book(book_id: int):
     book = db.session.get(Book, book_id)
 
     if book:
@@ -114,12 +120,10 @@ def delete_book(book_id:int):
         db.session.delete(book)
         db.session.commit()
 
-        # Check if the author has any remaining books in the library
         remaining_books_count = db.session.scalar(
             db.select(db.func.count(Book.id)).where(Book.author_id == author.id)
         )
 
-        # If the author has no other books, delete the author as well
         if remaining_books_count == 0:
             author_name = author.name
             db.session.delete(author)
@@ -132,6 +136,40 @@ def delete_book(book_id:int):
 
     else:
         flash("Book not found.", "danger")
+
+    return redirect(url_for('home'))
+
+
+@app.route('/book/<int:book_id>')
+def book_detail(book_id):
+    book = db.session.get(Book, book_id)
+    if not book:
+        flash("Book not found.", "danger")
+        return redirect(url_for('home'))
+    return render_template('book_detail.html', book=book)
+
+
+@app.route('/author/<int:author_id>')
+def author_detail(author_id):
+    author = db.session.get(Author, author_id)
+    if not author:
+        flash("Author not found.", "danger")
+        return redirect(url_for('home'))
+    return render_template('author_detail.html', author=author)
+
+
+@app.route('/author/<int:author_id>/delete', methods=['POST'])
+def delete_author(author_id):
+    author = db.session.get(Author, author_id)
+
+    if author:
+        author_name = author.name
+        db.session.delete(author)
+        db.session.commit()
+
+        flash(f"Author '{author_name}' and all associated books were successfully deleted!", "success")
+    else:
+        flash("Author not found.", "danger")
 
     return redirect(url_for('home'))
 

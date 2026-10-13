@@ -9,76 +9,106 @@
 </head>
 <body>
 
-<h1>Welcome to the Book Library</h1>
-
-<!-- Display Flashed Success/Error Messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        <div class="flash-messages" style="margin-bottom: 20px;">
-            {% for category, message in messages %}
-                <p style="color: {% if category == 'danger' %}red{% else %}green{% endif %}; font-weight: bold;">
-                    {{ message }}
-                </p>
-            {% endfor %}
+<div class="container">
+    <!-- Header Section -->
+    <header class="library-header">
+        <h1>📚 My Book Library</h1>
+        <div class="nav-links">
+            <a href="{{ url_for('add_book') }}" class="btn btn-primary">+ Add Book</a>
+            <a href="{{ url_for('add_author') }}" class="btn btn-secondary">+ Add Author</a>
         </div>
-    {% endif %}
-{% endwith %}
+    </header>
 
-<!-- Controls Container (Search & Sort) -->
-<div class="controls-container" style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">
-
-    <!-- Search Form -->
-    <form method="GET" action="{{ url_for('home') }}">
-        <input type="text" id="search" name="search" placeholder="Search by title..." value="{{ search_query or '' }}">
-        <button type="submit">Search</button>
-        {% if search_query %}
-            <a href="{{ url_for('home') }}" style="margin-left: 5px;">Clear</a>
+    <!-- Display Flashed Success/Error Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
         {% endif %}
+    {% endwith %}
 
-        <!-- Preserve current sort order when searching -->
-        <input type="hidden" name="sort" value="{{ current_sort }}">
-    </form>
+    <!-- Controls Container (Search & Sort) -->
+    <div class="controls-container">
+        <!-- Search Form -->
+        <form method="GET" action="{{ url_for('home') }}" class="search-form">
+            <input type="text" id="search" name="search" placeholder="Search by title..."
+                   value="{{ search_query or '' }}">
+            <button type="submit" class="btn btn-secondary">Search</button>
+            {% if search_query %}
+                <a href="{{ url_for('home') }}" class="clear-link">Clear</a>
+            {% endif %}
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+        </form>
 
-    <!-- Sorting Form -->
-    <form method="GET" action="{{ url_for('home') }}" style="margin-left: auto;">
-        <label for="sort">Sort by:</label>
-        <select name="sort" id="sort" onchange="this.form.submit()">
-            <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
-            <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Author Name</option>
-        </select>
-        <button type="submit">Sort</button>
-
-        <!-- Preserve current search query when sorting -->
-        {% if search_query %}
-            <input type="hidden" name="search" value="{{ search_query }}">
-        {% endif %}
-    </form>
-
-</div>
-
-<!-- No Results Message -->
-{% if no_results_message %}
-    <p style="color: #d9534f; font-weight: bold; margin-top: 20px;">{{ no_results_message }}</p>
-{% endif %}
-
-<!-- Book Listing -->
-{% for book in books %}
-    <div class="book-card">
-        <img class="book-cover"
-             src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-M.jpg"
-             alt="{{ book.title }} cover">
-
-        <div>
-            <h3>{{ book.title }}</h3>
-            <p>By: <strong>{{ book.author.name }}</strong></p>
-            <p>Published: {{ book.publication_year.strftime('%Y') }}</p>
-            <!-- Delete Book Form & Button -->
-          <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this book?');">
-            <button type="submit" style="background-color: #d9534f; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">Delete Book</button>
-          </form>
-        </div>
+        <!-- Sorting Form -->
+        <form method="GET" action="{{ url_for('home') }}" class="sort-form">
+            <label for="sort">Sort by:</label>
+            <select name="sort" id="sort" onchange="this.form.submit()">
+                <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
+                <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Author Name</option>
+            </select>
+            {% if search_query %}
+                <input type="hidden" name="search" value="{{ search_query }}">
+            {% endif %}
+        </form>
     </div>
-{% endfor %}
+
+    <!-- No Results Message -->
+    {% if no_results_message %}
+        <div class="alert alert-danger">{{ no_results_message }}</div>
+    {% endif %}
+
+    <!-- Book Listing Grid -->
+    <div class="book-grid">
+        {% for book in books %}
+            <div class="book-card">
+                <div class="book-cover-wrapper">
+                    <img class="book-cover"
+                         src="https://covers.openlibrary.org/b/isbn/{{ book.isbn }}-M.jpg"
+                         alt="{{ book.title }} cover"
+                         onerror="this.src='https://via.placeholder.com/120x180?text=No+Cover'">
+                </div>
+
+                <div class="book-info">
+                    <h3 class="book-title" title="{{ book.title }}">
+                        <a href="{{ url_for('book_detail', book_id=book.id) }}"
+                           style="text-decoration: none; color: inherit;">{{ book.title }}</a>
+                    </h3>
+
+                    <p class="book-author">By
+                        <strong>
+                            <a href="{{ url_for('author_detail', author_id=book.author.id) }}"
+                               style="color: inherit; text-decoration: underline;">{{ book.author.name }}</a>
+                        </strong>
+                    <form action="{{ url_for('delete_author', author_id=book.author.id) }}" method="POST"
+                          onsubmit="return confirm('Delete {{ book.author.name }} and ALL their books?');"
+                          style="display: inline; margin-left: 10px;">
+                        <button type="submit"
+                                style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">
+                            Delete Author
+                        </button>
+                    </form>
+                    </p>
+
+                    <p class="book-year">Published: {{ book.publication_year.strftime('%Y') }}</p>
+                    {% if book.rating %}
+                        <p class="book-rating" style="color: #f59e0b; font-weight: bold; margin-bottom: 10px;">⭐
+                            Rating: {{ book.rating }}/10</p>
+                    {% endif %}
+                    <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST"
+                          onsubmit="return confirm('Are you sure you want to delete this book?');" class="delete-form">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
 
 </body>
 </html>
